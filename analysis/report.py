@@ -43,7 +43,7 @@ class DiagnosticReportGenerator:
             f"**Candidate Session:** `{c_id}`  ",
             "",
             "## 1. Executive Summary & Verdicts",
-            "| Metric | Unit | Baseline (p50) | Candidate (p50) | Δ (Abs) | Δ (%) | p-value | Verdict |",
+            "| Metric | Unit | Baseline (p50) | Candidate (p50) | Delta (Abs) | Delta (%) | p-value | Verdict |",
             "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
         ]
 

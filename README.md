@@ -7,6 +7,7 @@
 [![C#](https://img.shields.io/badge/Collector-C%23%20%2F%20.NET%20Framework%204.8-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com)
 [![Python](https://img.shields.io/badge/Analytics-Python%203.12-3776AB?style=flat-square&logo=python)](https://python.org)
 [![Tests](https://img.shields.io/badge/Tests-23%20Passing%20(100%25)-34D399?style=flat-square&logo=pytest)](https://pytest.org)
+[![CI/CD Gate](https://github.com/uday68/winscope/actions/workflows/regression-gate.yml/badge.svg)](https://github.com/uday68/winscope/actions/workflows/regression-gate.yml)
 [![Storage](https://img.shields.io/badge/Storage-SQLite%20WAL-003B57?style=flat-square&logo=sqlite)](https://sqlite.org)
 [![Tracing](https://img.shields.io/badge/Diagnostics-ETW%20%7C%20WPA%20%7C%20WinDbg-FFB900?style=flat-square)](https://learn.microsoft.com/windows-hardware/drivers/debugger/)
 [![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square)](LICENSE)
