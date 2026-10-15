@@ -1,0 +1,91 @@
+// ============================================================================
+// WinScope Kusto Query Language (KQL) Telemetry Analytics
+// Applicable to Azure Monitor / Azure Data Explorer (ADX) / Microsoft Sentinel
+// ============================================================================
+
+// Schema Assumption:
+// Table: WinScopeObservations (
+//     SessionId: string,
+//     Timestamp: datetime,
+//     MetricName: string,
+//     Value: real,
+//     Unit: string,
+//     Source: string,
+//     TargetId: string,
+//     Status: string
+// )
+
+// 1. CPU Utilization Time Series with 5-Second Binning
+WinScopeObservations
+| where Timestamp >= ago(1h)
+| where MetricName == "cpu.utilization.pct" and Status == "ok"
+| summarize 
+    AvgCpu = avg(Value), 
+    P90Cpu = percentile(Value, 90), 
+    MaxCpu = max(Value) 
+    by bin(Timestamp, 5s), SessionId
+| render timechart;
+
+
+// 2. Detection of Sustained CPU Degradation using make-series
+let baseline_session = "session_baseline_01";
+let candidate_session = "session_candidate_01";
+WinScopeObservations
+| where SessionId in (baseline_session, candidate_session)
+| where MetricName == "cpu.utilization.pct" and Status == "ok"
+| make-series MeanCpu = avg(Value) default=0.0 on Timestamp step 1s by SessionId
+| extend (Anomalies, Score, Baseline) = series_decompose_anomalies(MeanCpu, 1.5, -1, 'linefit')
+| render anomalychart with(anomalycolumns=Anomalies);
+
+
+// 3. Process Working Set & Memory Pressure
+WinScopeObservations
+| where MetricName == "process.memory.working_set.bytes" and Status == "ok"
+| project Timestamp, TargetId, WorkingSetMB = Value / (1024 * 1024)
+| summarize PeakWorkingSetMB = max(WorkingSetMB), AvgWorkingSetMB = avg(WorkingSetMB) by TargetId
+| top 10 by PeakWorkingSetMB desc;
+
+
+// 4. Ingestion Data Quality & Missing Intervals Detection
+WinScopeObservations
+| where MetricName == "cpu.utilization.pct"
+| sort by SessionId asc, Timestamp asc
+| extend PrevTimestamp = prev(Timestamp, 1)
+| extend IntervalSeconds = datetime_diff('second', Timestamp, PrevTimestamp)
+| where isnotnull(IntervalSeconds) and IntervalSeconds > 2
+| project SessionId, GapStart = PrevTimestamp, GapEnd = Timestamp, GapSeconds = IntervalSeconds;
+
+
+// 5. Automated Baseline vs Candidate Regression Shift (Welch-style aggregation)
+let BaselineStats = 
+    WinScopeObservations
+    | where SessionId == "baseline_session_id"
+    | summarize 
+        Base_Count = count(), 
+        Base_Median = percentile(Value, 50), 
+        Base_Avg = avg(Value), 
+        Base_StDev = stdev(Value) 
+        by MetricName;
+let CandidateStats = 
+    WinScopeObservations
+    | where SessionId == "candidate_session_id"
+    | summarize 
+        Cand_Count = count(), 
+        Cand_Median = percentile(Value, 50), 
+        Cand_Avg = avg(Value), 
+        Cand_StDev = stdev(Value) 
+        by MetricName;
+BaselineStats
+| join kind=inner CandidateStats on MetricName
+| project 
+    MetricName, 
+    Base_Median, 
+    Cand_Median, 
+    AbsDelta = Cand_Median - Base_Median, 
+    PctShift = round(((Cand_Median - Base_Median) / Base_Median) * 100.0, 2),
+    Verdict = case(
+        Cand_Median > Base_Median * 1.20, "REGRESSION",
+        Cand_Median < Base_Median * 0.80, "IMPROVEMENT",
+        "STABLE"
+    )
+| sort by PctShift desc;
