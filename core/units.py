@@ -79,6 +79,30 @@ METRIC_CATALOG: Dict[str, Dict[str, Any]] = {
         "source": "GetTickCount64",
         "valid_range": (0.0, None),
     },
+    "power.ac_line.status": {
+        "unit": MetricUnit.STATUS_FLAG,
+        "description": "System AC power line status (1 = Online / plugged in, 0 = Offline / battery).",
+        "source": "GetSystemPowerStatus (ACLineStatus)",
+        "valid_range": (0, 1),
+    },
+    "power.battery.life.pct": {
+        "unit": MetricUnit.PERCENT,
+        "description": "Remaining battery capacity percentage (0.0 to 100.0).",
+        "source": "GetSystemPowerStatus (BatteryLifePercent)",
+        "valid_range": (0.0, 100.0),
+    },
+    "power.battery_saver.active": {
+        "unit": MetricUnit.STATUS_FLAG,
+        "description": "Windows Battery Saver energy conservation mode (1 = active, 0 = inactive).",
+        "source": "GetSystemPowerStatus (SystemStatusFlag)",
+        "valid_range": (0, 1),
+    },
+    "power.battery.remaining.seconds": {
+        "unit": MetricUnit.SECONDS,
+        "description": "Estimated remaining battery discharge runtime in seconds.",
+        "source": "GetSystemPowerStatus (BatteryLifeTime)",
+        "valid_range": (0.0, None),
+    },
     "collector.health.status": {
         "unit": MetricUnit.STATUS_FLAG,
         "description": "Health status of the telemetry collector (1 = healthy, 0 = degraded/failing).",

@@ -22,6 +22,8 @@ def test_collector_single_snapshot():
     assert "memory.physical.utilization.pct" in metric_names
     assert "memory.physical.available.bytes" in metric_names
     assert "system.uptime.seconds" in metric_names
+    assert "power.ac_line.status" in metric_names
+    assert "power.battery.life.pct" in metric_names
     assert "collector.health.status" in metric_names
 
     for r in records:

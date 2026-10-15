@@ -302,7 +302,84 @@ class WindowsTelemetryCollector:
                 )
             )
 
-        # 6. Collector Health
+        # 6. Power & Battery Status
+        try:
+            battery = psutil.sensors_battery()
+            if battery is not None:
+                records.append(
+                    MetricObservation(
+                        timestamp=now,
+                        time_basis=TimeBasis.UTC_WALL_CLOCK,
+                        metric_name="power.ac_line.status",
+                        value=1.0 if battery.power_plugged else 0.0,
+                        unit=MetricUnit.STATUS_FLAG,
+                        source="GetSystemPowerStatus",
+                        status="ok"
+                    )
+                )
+                records.append(
+                    MetricObservation(
+                        timestamp=now,
+                        time_basis=TimeBasis.UTC_WALL_CLOCK,
+                        metric_name="power.battery.life.pct",
+                        value=float(battery.percent),
+                        unit=MetricUnit.PERCENT,
+                        source="GetSystemPowerStatus",
+                        status="ok"
+                    )
+                )
+                if battery.secsleft > 0 and battery.secsleft != getattr(psutil, "POWER_TIME_UNLIMITED", -1):
+                    records.append(
+                        MetricObservation(
+                            timestamp=now,
+                            time_basis=TimeBasis.UTC_WALL_CLOCK,
+                            metric_name="power.battery.remaining.seconds",
+                            value=float(battery.secsleft),
+                            unit=MetricUnit.SECONDS,
+                            source="GetSystemPowerStatus",
+                            status="ok"
+                        )
+                    )
+            else:
+                # Desktop host without battery
+                records.append(
+                    MetricObservation(
+                        timestamp=now,
+                        time_basis=TimeBasis.UTC_WALL_CLOCK,
+                        metric_name="power.ac_line.status",
+                        value=1.0,
+                        unit=MetricUnit.STATUS_FLAG,
+                        source="GetSystemPowerStatus",
+                        status="ok"
+                    )
+                )
+                records.append(
+                    MetricObservation(
+                        timestamp=now,
+                        time_basis=TimeBasis.UTC_WALL_CLOCK,
+                        metric_name="power.battery.life.pct",
+                        value=None,
+                        unit=MetricUnit.PERCENT,
+                        source="GetSystemPowerStatus",
+                        status="unavailable",
+                        error_message="No battery installed or status unknown (desktop host)"
+                    )
+                )
+        except Exception as ex:
+            records.append(
+                MetricObservation(
+                    timestamp=now,
+                    time_basis=TimeBasis.UTC_WALL_CLOCK,
+                    metric_name="power.ac_line.status",
+                    value=None,
+                    unit=MetricUnit.STATUS_FLAG,
+                    source="GetSystemPowerStatus",
+                    status="error",
+                    error_message=str(ex)
+                )
+            )
+
+        # 7. Collector Health
         records.append(
             MetricObservation(
                 timestamp=now,

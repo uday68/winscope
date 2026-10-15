@@ -41,6 +41,17 @@ namespace WinScope.Collector
         }
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SYSTEM_POWER_STATUS
+    {
+        public byte ACLineStatus;
+        public byte BatteryFlag;
+        public byte BatteryLifePercent;
+        public byte SystemStatusFlag;
+        public uint BatteryLifeTime;
+        public uint BatteryFullLifeTime;
+    }
+
     public static class NativeMethods
     {
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -53,6 +64,10 @@ namespace WinScope.Collector
 
         [DllImport("kernel32.dll")]
         public static extern ulong GetTickCount64();
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GetSystemPowerStatus(out SYSTEM_POWER_STATUS lpSystemPowerStatus);
     }
 
     public class Program
@@ -263,7 +278,42 @@ namespace WinScope.Collector
                 double uptimeSec = (double)uptimeMs / 1000.0;
                 emitLine(FormatMetric(nowIso, "system.uptime.seconds", uptimeSec, "seconds", "GetTickCount64", null, "ok", null));
 
-                // 5. Collector Health
+                // 5. System Power & Battery Telemetry
+                SYSTEM_POWER_STATUS powerStatus;
+                if (NativeMethods.GetSystemPowerStatus(out powerStatus))
+                {
+                    if (powerStatus.ACLineStatus != 255)
+                    {
+                        emitLine(FormatMetric(nowIso, "power.ac_line.status", (double)powerStatus.ACLineStatus, "status_flag", "GetSystemPowerStatus", null, "ok", null));
+                    }
+                    else
+                    {
+                        emitLine(FormatMetric(nowIso, "power.ac_line.status", null, "status_flag", "GetSystemPowerStatus", null, "unavailable", "ACLineStatus unknown"));
+                    }
+
+                    if (powerStatus.BatteryLifePercent != 255)
+                    {
+                        emitLine(FormatMetric(nowIso, "power.battery.life.pct", (double)powerStatus.BatteryLifePercent, "percent", "GetSystemPowerStatus", null, "ok", null));
+                    }
+                    else
+                    {
+                        emitLine(FormatMetric(nowIso, "power.battery.life.pct", null, "percent", "GetSystemPowerStatus", null, "unavailable", "No battery installed or status unknown (desktop host)"));
+                    }
+
+                    emitLine(FormatMetric(nowIso, "power.battery_saver.active", (double)powerStatus.SystemStatusFlag, "status_flag", "GetSystemPowerStatus", null, "ok", null));
+
+                    if (powerStatus.BatteryLifeTime != 0xFFFFFFFF)
+                    {
+                        emitLine(FormatMetric(nowIso, "power.battery.remaining.seconds", (double)powerStatus.BatteryLifeTime, "seconds", "GetSystemPowerStatus", null, "ok", null));
+                    }
+                }
+                else
+                {
+                    int err = Marshal.GetLastWin32Error();
+                    emitLine(FormatMetric(nowIso, "power.ac_line.status", null, "status_flag", "GetSystemPowerStatus", null, "error", "Win32 error: " + err));
+                }
+
+                // 6. Collector Health
                 emitLine(FormatMetric(nowIso, "collector.health.status", 1.0, "status_flag", "WinScope_Watchdog", null, "ok", null));
 
                 sampleIndex++;
